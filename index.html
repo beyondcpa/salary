@@ -1,0 +1,458 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>4대보험 급여대장 자동입력 · 비욘드넘버</title>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
+<script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
+<style>
+  :root{--blue:#0065F8;--navy:#0A2540;--cyan:#06B6D4;--ink:#0A2540;--mut:#5b6b7a;
+    --line:#e3e8ee;--bg:#f5f7fa;--ok:#0a8f4f;--okbg:#e8f7ef;--warn:#b8860b;
+    --warnbg:#fff4d6;--err:#d12b3a;--errbg:#fdeced;}
+  *{box-sizing:border-box}
+  body{margin:0;font-family:"맑은 고딕","Malgun Gothic",-apple-system,sans-serif;
+    color:var(--ink);background:var(--bg);line-height:1.55;-webkit-font-smoothing:antialiased}
+  .wrap{max-width:920px;margin:0 auto;padding:32px 20px 80px}
+  header{display:flex;align-items:baseline;gap:12px}
+  .logo{font-weight:800;font-size:20px;letter-spacing:-.5px;color:var(--navy)}
+  .logo b{color:var(--blue)}
+  h1{font-size:26px;font-weight:800;letter-spacing:-.8px;margin:14px 0 6px}
+  .sub{color:var(--mut);font-size:14px;margin-bottom:26px}
+  .sub b{color:var(--navy)}
+  .grid{display:grid;grid-template-columns:repeat(3,1fr);gap:14px}
+  @media(max-width:680px){.grid{grid-template-columns:1fr}}
+  .drop{background:#fff;border:1.5px dashed var(--line);border-radius:14px;padding:18px 14px;
+    text-align:center;cursor:pointer;transition:.15s;min-height:150px;
+    display:flex;flex-direction:column;justify-content:center}
+  .drop:hover{border-color:var(--blue);background:#fbfdff}
+  .drop.over{border-color:var(--blue);background:#eef5ff}
+  .drop.has{border-style:solid;border-color:var(--blue);background:#f4f9ff}
+  .drop .tag{font-size:11px;font-weight:700;letter-spacing:.4px;color:var(--blue);margin-bottom:8px}
+  .drop .ico{font-size:24px;margin-bottom:6px}
+  .drop .ttl{font-weight:700;font-size:14px}
+  .drop .hint{font-size:12px;color:var(--mut);margin-top:3px}
+  .drop .guide{font-size:11px;color:var(--mut);margin-top:7px;line-height:1.5;
+    background:#eef2f6;border-radius:7px;padding:6px 8px;text-align:left}
+  .drop .guide b{color:var(--navy)}
+  .drop .fname{font-size:12.5px;color:var(--navy);font-weight:600;margin-top:8px;
+    word-break:break-all;display:none}
+  .drop.has .fname{display:block}
+  .drop.has .ico,.drop.has .hint{display:none}
+  input[type=file]{display:none}
+  .run{margin-top:22px;width:100%;border:0;border-radius:12px;background:var(--blue);
+    color:#fff;font-weight:800;font-size:16px;padding:15px;cursor:pointer;
+    font-family:inherit;letter-spacing:-.3px;transition:.15s}
+  .run:hover{background:#0052cc}
+  .run:disabled{background:#c3ccd6;cursor:not-allowed}
+  .status{margin-top:14px;font-size:13.5px;color:var(--mut);text-align:center;min-height:20px}
+  .panel{display:none;margin-top:30px}
+  .panel.show{display:block;animation:fade .3s ease}
+  @keyframes fade{from{opacity:0;transform:translateY(6px)}to{opacity:1}}
+  .vrow{display:grid;grid-template-columns:repeat(3,1fr);gap:12px;margin-bottom:22px}
+  @media(max-width:680px){.vrow{grid-template-columns:1fr}}
+  .vcard{background:#fff;border:1px solid var(--line);border-radius:12px;padding:16px 18px}
+  .vcard .lab{font-size:12px;color:var(--mut);font-weight:600;margin-bottom:8px}
+  .vcard .num{font-size:19px;font-weight:800;letter-spacing:-.5px}
+  .vcard .chk{font-size:12.5px;font-weight:700;margin-top:6px;display:inline-flex;
+    align-items:center;gap:5px;padding:3px 9px;border-radius:20px}
+  .chk.ok{color:var(--ok);background:var(--okbg)}
+  .chk.no{color:var(--err);background:var(--errbg)}
+  .sec-h{font-size:15px;font-weight:800;margin:0 0 12px;letter-spacing:-.4px}
+  .sec-h .cnt{color:var(--mut);font-weight:600;font-size:13px;margin-left:6px}
+  table{width:100%;border-collapse:collapse;background:#fff;border:1px solid var(--line);
+    border-radius:12px;overflow:hidden;font-size:13px}
+  th,td{padding:9px 12px;text-align:left;border-bottom:1px solid var(--line)}
+  th{background:#f0f4f8;font-weight:700;font-size:11.5px;color:var(--navy);letter-spacing:.3px}
+  td.r,th.r{text-align:right;font-variant-numeric:tabular-nums}
+  tr:last-child td{border-bottom:0}
+  tr.flag{background:var(--warnbg)}
+  tr.flag td:first-child{box-shadow:inset 3px 0 0 var(--warn)}
+  .note{color:var(--warn);font-weight:600}
+  .dl{margin-top:24px;display:inline-flex;align-items:center;gap:8px;border:0;
+    border-radius:12px;background:var(--navy);color:#fff;font-weight:800;font-size:15px;
+    padding:14px 26px;cursor:pointer;font-family:inherit;transition:.15s}
+  .dl:hover{background:#06192e}
+  .err-box{display:none;margin-top:20px;background:var(--errbg);border:1px solid #f3c0c6;
+    border-radius:12px;padding:16px 18px;font-size:13.5px;color:#7d1722}
+  .err-box.show{display:block}
+  .foot{margin-top:40px;font-size:12px;color:var(--mut);text-align:center;line-height:1.7}
+</style>
+</head>
+<body>
+<div class="wrap">
+  <header><span class="logo">비욘드<b>넘버</b></span></header>
+  <h1>4대보험 급여대장 자동입력</h1>
+  <p class="sub">국민연금·건강보험 자료와 급여대장 양식을 올리면 <b>국민연금·건강보험·장기요양</b>을 자동으로 채우고, 원본 대조·총계 검증·특이사항까지 만들어 줍니다. 파일은 이 브라우저 안에서만 처리됩니다.</p>
+
+  <div class="grid">
+    <label class="drop" id="d_pension">
+      <span class="tag">국민연금 자료</span>
+      <span class="ico">📄</span>
+      <span class="ttl">국민연금 결정내역</span>
+      <span class="hint">클릭 또는 드래그 · PDF/엑셀</span>
+      <span class="fname"></span>
+      <input type="file" accept=".pdf,.xlsx,.xls" data-k="pension">
+    </label>
+    <label class="drop" id="d_health">
+      <span class="tag">건강보험 자료</span>
+      <span class="ico">📄</span>
+      <span class="ttl">건강보험 산출내역</span>
+      <span class="hint">클릭 또는 드래그 · PDF/엑셀</span>
+      <span class="fname"></span>
+      <input type="file" accept=".pdf,.xlsx,.xls" data-k="health">
+    </label>
+    <label class="drop" id="d_xlsx">
+      <span class="tag">급여대장 양식</span>
+      <span class="ico">📊</span>
+      <span class="ttl">급여대장 양식 (xlsx)</span>
+      <span class="fname"></span>
+      <span class="guide">위하고 → <b>인사 → 급여자료입력</b> → <b>Ctrl+G</b>(엑셀 내려받기) → 숫자 지우고 업로드</span>
+      <input type="file" accept=".pdf,.xlsx,.xls" data-k="xlsx">
+    </label>
+  </div>
+
+  <button class="run" id="run" disabled>자동입력 실행</button>
+  <div class="status" id="status">세 파일을 모두 올려 주세요.</div>
+  <div class="err-box" id="errbox"></div>
+
+  <div class="panel" id="panel">
+    <div class="vrow" id="vrow"></div>
+    <h2 class="sec-h">처리 결과 <span class="cnt" id="resCnt"></span></h2>
+    <div style="overflow-x:auto"><table id="resTable"></table></div>
+    <button class="dl" id="dl">⬇ 채워진 급여대장 내려받기</button>
+  </div>
+
+  <p class="foot">비욘드넘버 · 내부 업무용 도구 · 국민연금·건강보험·장기요양만 자동입력 (고용보험·소득세 미포함)<br>
+    내려받은 파일에는 <b>'원본자료'</b> 시트가 함께 들어가며, 메인 시트 맨 아래에서 합계 일치를 자동 검증합니다.</p>
+</div>
+
+<script>
+pdfjsLib.GlobalWorkerOptions.workerSrc='https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.worker.min.js';
+const files={pension:null,health:null,xlsx:null};
+const $=s=>document.querySelector(s);
+const num=v=>{if(v==null)return 0;const n=parseInt(String(v).replace(/[^\d-]/g,''),10);return isNaN(n)?0:n;};
+const norm=v=>String(v==null?'':v).replace(/\s/g,'');
+const fmt=n=>n.toLocaleString('ko-KR');
+const ORANGE='FFFFC000';
+
+// 입력 자료 로더: PDF면 줄, 엑셀(xls/xlsx)이면 표
+async function loadSource(file){
+  if(/\.pdf$/i.test(file.name))return {type:'pdf',lines:await pdfToLines(file)};
+  const wb=XLSX.read(await file.arrayBuffer(),{type:'array'});
+  const ws=wb.Sheets[wb.SheetNames[0]];
+  return {type:'table',rows:XLSX.utils.sheet_to_json(ws,{header:1,blankrows:false})};
+}
+// 엑셀 국민연금 파서 (헤더명 기반 → 열 순서 바뀌어도 대응)
+function parsePensionTable(rows){
+  let hr=-1,c={};
+  for(let i=0;i<Math.min(rows.length,12);i++){
+    const r=rows[i].map(norm);
+    if(r.includes('성명')&&r.some(v=>v.includes('근로자기여금'))){hr=i;
+      r.forEach((v,j)=>{if(v==='성명'&&c.name==null)c.name=j;if(v.includes('근로자기여금')&&c.emp==null)c.emp=j;});break;}
+  }
+  const byName={},arrear={};if(hr<0)return{byName,arrear};let ina=false;
+  for(let i=hr+1;i<rows.length;i++){
+    if(/소급/.test(rows[i].map(norm).join(''))){ina=true;continue;}
+    const nm=norm(rows[i][c.name]);if(!/^[가-힣]{2,5}$/.test(nm))continue;
+    if(!ina)byName[nm]={employee:num(rows[i][c.emp])};else arrear[nm]=num(rows[i][c.emp]);
+  }
+  return{byName,arrear};
+}
+// 엑셀 건강보험 파서 (헤더명 기반)
+function parseHealthTable(rows){
+  let hr=-1,c={};
+  for(let i=0;i<Math.min(rows.length,12);i++){
+    const r=rows[i].map(norm);
+    if(r.includes('성명')&&r.some(v=>v==='산출보험료')){hr=i;
+      r.forEach((v,j)=>{
+        if(v==='성명')c.name=j;else if(v==='산출보험료')c.hcalc=j;else if(v==='정산금액')c.hadj=j;
+        else if(v.includes('요양산출'))c.ccalc=j;else if(v.includes('요양정산')&&v.includes('보험료'))c.cadj=j;});break;}
+  }
+  const byName={},dup={};if(hr<0)return{byName,dup};
+  for(let i=hr+1;i<rows.length;i++){const nm=norm(rows[i][c.name]);if(!/^[가-힣]{2,5}$/.test(nm))continue;
+    if(byName[nm])dup[nm]=1;
+    byName[nm]={name:nm,h_calc:num(rows[i][c.hcalc]),h_adj:num(rows[i][c.hadj]),c_calc:num(rows[i][c.ccalc]),c_adj:num(rows[i][c.cadj])};}
+  return{byName,dup};
+}
+
+document.querySelectorAll('.drop').forEach(d=>{
+  const inp=d.querySelector('input'),k=inp.dataset.k;
+  inp.addEventListener('change',e=>{if(e.target.files[0])setFile(d,k,e.target.files[0]);});
+  d.addEventListener('dragover',e=>{e.preventDefault();d.classList.add('over');});
+  d.addEventListener('dragleave',()=>d.classList.remove('over'));
+  d.addEventListener('drop',e=>{e.preventDefault();d.classList.remove('over');
+    const f=e.dataTransfer.files[0];if(f)setFile(d,k,f);});
+});
+function setFile(d,k,f){files[k]=f;d.classList.add('has');d.querySelector('.fname').textContent=f.name;
+  const ready=files.pension&&files.health&&files.xlsx;$('#run').disabled=!ready;
+  $('#status').textContent=ready?'준비 완료. 실행을 눌러 주세요.':'나머지 파일도 올려 주세요.';}
+
+// ---------- PDF → gap 기반 줄 복원 ----------
+async function pdfToLines(file){
+  const buf=await file.arrayBuffer();
+  const pdf=await pdfjsLib.getDocument({data:buf}).promise;
+  const out=[];
+  for(let p=1;p<=pdf.numPages;p++){
+    const page=await pdf.getPage(p);
+    const tc=await page.getTextContent();
+    const rows=[];
+    tc.items.forEach(it=>{
+      if(!it.str.trim())return;
+      const y=it.transform[5],x=it.transform[4];
+      let r=rows.find(o=>Math.abs(o.y-y)<3);
+      if(!r){r={y,items:[]};rows.push(r);}
+      r.items.push({x,s:it.str,w:it.width});
+    });
+    rows.sort((a,b)=>b.y-a.y);
+    rows.forEach(r=>{
+      const it=r.items.sort((a,b)=>a.x-b.x);
+      let ln='';
+      for(let i=0;i<it.length;i++){
+        if(i>0){
+          const pv=it[i-1];
+          const gap=it[i].x-(pv.x+(pv.w||0));
+          const cw=(pv.w||0)/Math.max([...pv.s].length,1);
+          if(gap>cw*0.5||gap>2.2)ln+=' ';
+        }
+        ln+=it[i].s;
+      }
+      ln=ln.replace(/\s+/g,' ').trim();
+      if(ln)out.push(ln);
+    });
+  }
+  return out;
+}
+
+// ---------- 국민연금 파서 ----------
+function parsePension(ls){
+  const byName={},arrear={};let ina=false;
+  for(const ln of ls){
+    if(ln.includes('소급분 내역')){ina=true;continue;}
+    if(!ina){
+      const m=ln.match(/^\d+\s+([가-힣]{2,5})\s+\d{6}-\d{7}\s+([\d,]+)\s+([\d,]+)\s+([\d,]+)/);
+      if(m)byName[m[1]]={employee:num(m[3])};
+    }else{
+      const a=ln.match(/^\d+\s+([가-힣]{2,5})\s+\d{6}-.+?\s+(-?[\d,]+)\s*$/);
+      if(a)arrear[a[1]]=num(a[2]);
+    }
+  }
+  return {byName,arrear};
+}
+
+// ---------- 건강보험 파서 (3줄 구조: 건강 / 이름 / 요양) ----------
+function parseHealth(ls){
+  const recs=[];
+  for(const ln of ls){
+    const mh=ln.match(/건강\s+([\d,]+)\s+(-?[\d,]+)/);
+    if(mh&&!ln.includes('(건강')){
+      recs.push({name:null,h_calc:num(mh[1]),h_adj:num(mh[2]),c_calc:0,c_adj:0});continue;
+    }
+    if(/요양\s+[\d,]/.test(ln)&&recs.length){
+      const t=ln.split(/\s+/),i=t.indexOf('요양');
+      const calc=num(t[i+1]);let adj=0;
+      if(/^-?[\d,]+$/.test(t[i+2]||''))adj=num(t[i+2]);
+      else if(/^-?[\d,]+$/.test(t[i+3]||''))adj=num(t[i+3]);
+      const r=recs[recs.length-1];
+      if(r&&r.c_calc===0){r.c_calc=calc;r.c_adj=adj;}continue;
+    }
+    const mn=ln.match(/^([가-힣]{2,5})\s+[\d,]/);
+    if(mn&&!ln.includes('건강')&&!ln.includes('요양')&&recs.length){
+      const r=recs[recs.length-1];if(r&&!r.name)r.name=mn[1];continue;
+    }
+  }
+  const byName={},dup={};
+  recs.forEach(r=>{if(!r.name)return;if(byName[r.name])dup[r.name]=1;byName[r.name]=r;});
+  return {byName,dup};
+}
+
+// ---------- 급여양식 헤더/열 자동탐색 ----------
+function clean(v){
+  if(v==null)return '';
+  if(typeof v==='object'&&v.richText)v=v.richText.map(t=>t.text).join('');
+  return String(v).replace(/\s/g,'');
+}
+function findCols(ws){
+  let headerRow=0,best=0;
+  for(let r=1;r<=Math.min(ws.rowCount,15);r++){
+    let hits=0;
+    ws.getRow(r).eachCell(c=>{const v=clean(c.value);
+      if(['국민연금','건강보험','장기요양보험료','장기요양','사원명','성명','이름'].includes(v))hits++;});
+    if(hits>best){best=hits;headerRow=r;}
+  }
+  const cols={};
+  ws.getRow(headerRow).eachCell((c,cn)=>{
+    const v=clean(c.value);
+    if(['사원명','성명','이름'].includes(v))cols.name=cn;
+    else if(v==='국민연금')cols.pension=cn;
+    else if(v==='건강보험')cols.health=cn;
+    else if(['장기요양보험료','장기요양','요양'].includes(v))cols.care=cn;
+    else if(v==='국민연금정산')cols.pAdj=cn;
+    else if(['건강보험정산','건강정산'].includes(v))cols.hAdj=cn;
+    else if(v.includes('장기요양정산')||v.includes('요양정산')||v==='장기요양보험정산')cols.cAdj=cn;
+    else if(v==='특이사항')cols.note=cn;
+  });
+  return {headerRow,cols,maxCol:ws.columnCount};
+}
+
+$('#run').addEventListener('click',async()=>{
+  $('#errbox').classList.remove('show');$('#panel').classList.remove('show');
+  $('#run').disabled=true;$('#status').textContent='파일 분석 중…';
+  try{
+    const pSrc=await loadSource(files.pension);
+    const pension=pSrc.type==='pdf'?parsePension(pSrc.lines):parsePensionTable(pSrc.rows);
+    const hSrc=await loadSource(files.health);
+    const health=hSrc.type==='pdf'?parseHealth(hSrc.lines):parseHealthTable(hSrc.rows);
+    if(!Object.keys(pension.byName).length||!Object.keys(health.byName).length)
+      throw new Error('국민연금 또는 건강보험 자료에서 가입자를 읽지 못했습니다. 파일이 올바른지(자료가 서로 바뀌지 않았는지) 확인해 주세요.');
+
+    const wb=new ExcelJS.Workbook();
+    await wb.xlsx.load(await files.xlsx.arrayBuffer());
+    const ws=wb.worksheets[0];
+    const {headerRow,cols,maxCol}=findCols(ws);
+    if(!cols.name||!cols.pension||!cols.health||!cols.care)
+      throw new Error('급여대장에서 "사원명/국민연금/건강보험/장기요양" 열을 찾지 못했습니다. 헤더 명칭을 확인해 주세요.');
+
+    let noteCol=cols.note;
+    if(!noteCol){noteCol=maxCol+1;ws.getCell(headerRow,noteCol).value='특이사항';ws.getColumn(noteCol).width=46;}
+
+    // 데이터 행 수집
+    const rows=[];let sumRow=0;
+    for(let r=headerRow+1;r<=ws.rowCount;r++){
+      const nm=clean(ws.getCell(r,cols.name).value);
+      if(nm==='합계'||nm==='계'){sumRow=r;break;}
+      if(/^[가-힣]{2,6}$/.test(nm))rows.push({r,nm});
+    }
+    const inSheet=new Set(rows.map(o=>o.nm));
+    const setV=(r,c,v)=>{if(c)ws.getCell(r,c).value=v;};
+    const FILL={type:'pattern',pattern:'solid',fgColor:{argb:ORANGE}};
+    const markNote=(r,note)=>{
+      for(let c=1;c<noteCol;c++){
+        const cell=ws.getCell(r,c);
+        cell.style={...cell.style,fill:FILL};   // 셀마다 새 style → 공유 전파 방지
+      }
+      const nc=ws.getCell(r,noteCol);
+      nc.value=note;
+      nc.style={...nc.style,fill:FILL,alignment:{wrapText:true,vertical:'middle'}};
+    };
+
+    const result=[];
+    for(const {r,nm} of rows){
+      const p=pension.byName[nm],h=health.byName[nm],notes=[];
+      const pv=p?p.employee:null,hv=h?h.h_calc:null,cv=h?h.c_calc:null;
+      if(pv!=null)setV(r,cols.pension,pv);
+      if(hv!=null)setV(r,cols.health,hv);
+      if(cv!=null)setV(r,cols.care,cv);
+      if(h&&h.h_adj){setV(r,cols.hAdj,h.h_adj);notes.push(`건강 정산 ${fmt(h.h_adj)}`);}
+      if(h&&h.c_adj){setV(r,cols.cAdj,h.c_adj);notes.push(`요양 정산 ${fmt(h.c_adj)}`);}
+      if(!p&&!h)notes.unshift('국민연금·건강·요양 자료 없음 → 확인 필요');
+      else if(!p&&h){const ar=pension.arrear[nm];
+        notes.unshift(ar!=null?`국민연금 당월분 없음(소급 ${fmt(ar)} 통보) → 확인 필요`:'국민연금 자료 없음 → 확인 필요');}
+      else if(p&&!h)notes.unshift('건강·요양 자료 없음 → 확인 필요');
+      if(health.dup[nm])notes.push('⚠ 동명이인 가능 → 확인 필요');
+      const note=notes.join(' / ');
+      if(note)markNote(r,note);
+      result.push({nm,pv,hv,cv,note});
+    }
+
+    // PDF엔 있으나 양식에 없는 사람 → 합계행 위 추가 (행 전체 주황)
+    const extra=[];
+    Object.keys(health.byName).forEach(nm=>{if(!inSheet.has(nm))extra.push(nm);});
+    Object.keys(pension.byName).forEach(nm=>{if(!inSheet.has(nm)&&!extra.includes(nm))extra.push(nm);});
+    for(const nm of extra){
+      const p=pension.byName[nm],h=health.byName[nm];
+      const pos=sumRow||ws.rowCount+1;
+      ws.spliceRows(pos,0,[]);if(sumRow)sumRow++;
+      const nr=pos;
+      ws.getCell(nr,cols.name).value=nm;
+      const pv=p?p.employee:null,hv=h?h.h_calc:null,cv=h?h.c_calc:null;
+      if(pv!=null)ws.getCell(nr,cols.pension).value=pv;
+      if(hv!=null)ws.getCell(nr,cols.health).value=hv;
+      if(cv!=null)ws.getCell(nr,cols.care).value=cv;
+      if(h&&h.h_adj)ws.getCell(nr,cols.hAdj).value=h.h_adj;
+      if(h&&h.c_adj)ws.getCell(nr,cols.cAdj).value=h.c_adj;
+      const note='자료에는 있으나 급여대장 명단 누락 → 추가함. 사원코드·부서·직급 등 확인 필요';
+      markNote(nr,note);
+      result.push({nm,pv,hv,cv,note,added:true});
+    }
+    if(!sumRow)sumRow=ws.rowCount+1;
+
+    // ---------- 원본자료 시트 ----------
+    const names=Array.from(new Set([...Object.keys(pension.byName),...Object.keys(health.byName),
+      ...Object.keys(pension.arrear)])).sort((a,b)=>a.localeCompare(b,'ko'));
+    let raw=wb.getWorksheet('원본자료');if(raw)wb.removeWorksheet(raw.id);
+    raw=wb.addWorksheet('원본자료');
+    raw.addRow(['성명','국민연금','건강보험','장기요양','건강정산','요양정산','국민연금소급']);
+    raw.getRow(1).font={bold:true};raw.getRow(1).fill={type:'pattern',pattern:'solid',fgColor:{argb:'FFE8EEF5'}};
+    names.forEach(nm=>{
+      const p=pension.byName[nm],h=health.byName[nm];
+      raw.addRow([nm,p?p.employee:0,h?h.h_calc:0,h?h.c_calc:0,h?h.h_adj:0,h?h.c_adj:0,
+        pension.arrear[nm]!=null?pension.arrear[nm]:0]);
+    });
+    const rawEnd=names.length+1; // 데이터 마지막 행
+    raw.addRow(['합계',{formula:`SUM(B2:B${rawEnd})`},{formula:`SUM(C2:C${rawEnd})`},
+      {formula:`SUM(D2:D${rawEnd})`},{formula:`SUM(E2:E${rawEnd})`},{formula:`SUM(F2:F${rawEnd})`},
+      {formula:`SUM(G2:G${rawEnd})`}]);
+    raw.getRow(rawEnd+1).font={bold:true};
+    [12,12,12,12,12,12,14].forEach((w,i)=>raw.getColumn(i+1).width=w);
+
+    // ---------- 메인시트 검증 수식 (테이블 맨 밑) ----------
+    const dr0=headerRow+1,drE=sumRow-1;
+    const L=n=>ws.getColumn(n).letter;
+    const vR=sumRow+2;
+    ws.getCell(vR,cols.name).value='■ 자동검증 (원본자료 대조 · TRUE=일치)';
+    ws.getCell(vR,cols.name).font={bold:true};
+    const vf=(col,rawCol)=>({formula:`SUM(${L(col)}${dr0}:${L(col)}${drE})=SUM('원본자료'!${rawCol}2:${rawCol}${rawEnd})`});
+    ws.getCell(vR,cols.pension).value=vf(cols.pension,'B');
+    ws.getCell(vR,cols.health).value=vf(cols.health,'C');
+    ws.getCell(vR,cols.care).value=vf(cols.care,'D');
+
+    // 검증(화면): PDF 원본 합 vs 채운 합
+    let sP=0;Object.values(pension.byName).forEach(o=>sP+=o.employee);
+    let sH=0,sC=0;Object.values(health.byName).forEach(o=>{sH+=o.h_calc;sC+=o.c_calc;});
+    let gP=0,gH=0,gC=0;result.forEach(r=>{gP+=r.pv||0;gH+=r.hv||0;gC+=r.cv||0;});
+
+    renderResult(result,{P:[gP,sP],H:[gH,sH],C:[gC,sC]},
+      {sheet:rows.length,pdfP:Object.keys(pension.byName).length,
+       pdfH:Object.keys(health.byName).length,extra:extra.length});
+
+    $('#dl').onclick=async()=>{
+      const buf=await wb.xlsx.writeBuffer();
+      const blob=new Blob([buf],{type:'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet'});
+      const a=document.createElement('a');a.href=URL.createObjectURL(blob);
+      a.download=files.xlsx.name.replace(/\.xlsx$/i,'')+'_4대보험반영.xlsx';
+      a.click();URL.revokeObjectURL(a.href);
+    };
+    $('#status').textContent='';
+  }catch(err){
+    $('#errbox').textContent='오류: '+err.message;
+    $('#errbox').classList.add('show');$('#status').textContent='';console.error(err);
+  }
+  $('#run').disabled=false;
+});
+
+function vcard(lab,got,tgt){
+  const ok=got===tgt;
+  return `<div class="vcard"><div class="lab">${lab}</div><div class="num">${fmt(got)}원</div>
+    <div class="chk ${ok?'ok':'no'}">${ok?'✓ 총계 일치':'✗ 차이 '+fmt(got-tgt)}</div></div>`;
+}
+function renderResult(rows,sum,info){
+  $('#vrow').innerHTML=vcard('국민연금 합계',sum.P[0],sum.P[1])+
+    vcard('건강보험 합계',sum.H[0],sum.H[1])+vcard('장기요양 합계',sum.C[0],sum.C[1]);
+  const flags=rows.filter(r=>r.note).length;
+  $('#resCnt').textContent=`· 양식 ${info.sheet}명 / PDF 국민연금 ${info.pdfP}·건강 ${info.pdfH}명`+
+    (info.extra?` / 추가 ${info.extra}명`:'')+(flags?` / 특이사항 ${flags}건`:'');
+  let h='<thead><tr><th>사원명</th><th class="r">국민연금</th><th class="r">건강보험</th>'+
+    '<th class="r">장기요양</th><th>특이사항</th></tr></thead><tbody>';
+  rows.forEach(r=>{
+    h+=`<tr class="${r.note?'flag':''}"><td>${r.nm}${r.added?' <b style="color:var(--blue)">＋추가</b>':''}</td>`+
+       `<td class="r">${r.pv!=null?fmt(r.pv):'–'}</td><td class="r">${r.hv!=null?fmt(r.hv):'–'}</td>`+
+       `<td class="r">${r.cv!=null?fmt(r.cv):'–'}</td><td class="${r.note?'note':''}">${r.note||''}</td></tr>`;
+  });
+  $('#resTable').innerHTML=h+'</tbody>';
+  $('#panel').classList.add('show');
+}
+</script>
+</body>
+</html>
