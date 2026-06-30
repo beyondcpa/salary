@@ -3,7 +3,7 @@
 <head>
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>4대보험 급여대장 자동입력 · 비욘드넘버</title>
+<title>4대보험 급여대장 자동입력 · 비욘드택스</title>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/pdf.js/3.11.174/pdf.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/exceljs/4.4.0/exceljs.min.js"></script>
 <script src="https://cdnjs.cloudflare.com/ajax/libs/xlsx/0.18.5/xlsx.full.min.js"></script>
@@ -81,8 +81,36 @@
 </style>
 </head>
 <body>
+<div id="gate" style="position:fixed;inset:0;z-index:9999;background:#0A2540;
+  display:flex;align-items:center;justify-content:center;font-family:'맑은 고딕',sans-serif">
+  <div style="background:#fff;border-radius:16px;padding:36px 32px;width:320px;
+    box-shadow:0 20px 60px rgba(0,0,0,.3);text-align:center">
+    <div style="font-weight:800;font-size:18px;color:#0A2540;margin-bottom:4px">비욘드<span style="color:#0065F8">택스</span></div>
+    <div style="font-size:13px;color:#5b6b7a;margin-bottom:20px">직원 전용 · 비밀번호를 입력하세요</div>
+    <input id="pw" type="password" placeholder="비밀번호" autofocus
+      style="width:100%;padding:12px 14px;border:1.5px solid #e3e8ee;border-radius:10px;
+      font-size:15px;font-family:inherit;outline:none;text-align:center">
+    <div id="pwerr" style="color:#d12b3a;font-size:12.5px;margin-top:8px;height:16px"></div>
+    <button id="pwbtn" style="margin-top:8px;width:100%;border:0;border-radius:10px;
+      background:#0065F8;color:#fff;font-weight:800;font-size:15px;padding:12px;
+      cursor:pointer;font-family:inherit">들어가기</button>
+  </div>
+</div>
+<script>
+(function(){
+  const PW='beyond';
+  const gate=document.getElementById('gate'),pw=document.getElementById('pw'),
+        err=document.getElementById('pwerr'),btn=document.getElementById('pwbtn');
+  const tryIn=()=>{
+    if(pw.value===PW){gate.style.display='none';}
+    else{err.textContent='비밀번호가 올바르지 않습니다.';pw.value='';pw.focus();}
+  };
+  btn.addEventListener('click',tryIn);
+  pw.addEventListener('keydown',e=>{if(e.key==='Enter')tryIn();});
+})();
+</script>
 <div class="wrap">
-  <header><span class="logo">비욘드<b>넘버</b></span></header>
+  <header><span class="logo">비욘드<b>택스</b></span></header>
   <h1>4대보험 급여대장 자동입력</h1>
   <p class="sub">국민연금·건강보험 자료와 급여대장 양식을 올리면 <b>국민연금·건강보험·장기요양</b>을 자동으로 채우고, 원본 대조·총계 검증·특이사항까지 만들어 줍니다. 파일은 이 브라우저 안에서만 처리됩니다.</p>
 
@@ -124,7 +152,7 @@
     <button class="dl" id="dl">⬇ 채워진 급여대장 내려받기</button>
   </div>
 
-  <p class="foot">비욘드넘버 · 내부 업무용 도구 · 국민연금·건강보험·장기요양만 자동입력 (고용보험·소득세 미포함)<br>
+  <p class="foot">비욘드택스 · 내부 업무용 도구 · 국민연금·건강보험·장기요양만 자동입력 (고용보험·소득세 미포함)<br>
     내려받은 파일에는 <b>'원본자료'</b> 시트가 함께 들어가며, 메인 시트 맨 아래에서 합계 일치를 자동 검증합니다.</p>
 </div>
 
